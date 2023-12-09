@@ -58,7 +58,6 @@ int main(int argc, char * argv[]) {
     std::cout << "prog" << endl;
     printL_prog(LLVMStream,prog);
     LLVMStream.close();
-
     return 0;
 }
 

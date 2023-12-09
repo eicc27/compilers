@@ -1,9 +1,22 @@
 struct foo {
-    i: int,
-    j: int,
-    k: int
+    x:int,
+    b[10]: bar
 }
 
-fn main()->int{
-    ret 1 + 2 + 3;
+struct bar {
+    x:int,
+    bz[10]: baz
+}
+
+struct baz {
+    x:int,
+    y:int
+}
+
+fn main()->int {
+    let foos[10]: foo;
+    foos[1].x = 1;
+    foos[2].b[1].x = 2;
+    foos[3].b[2].bz[3].y = 3;
+    ret foos[1].x + foos[3].b[4].x + foos[4].b[5].bz[6].y;
 }

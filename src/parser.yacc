@@ -168,11 +168,21 @@ ArrayExpr: IDENTIFIER LBRACKET INT_LITERAL RBRACKET
   $$ = A_ArrayExpr($1->pos, A_IdExprLVal($1->pos, $1->u.id), A_NumIndexExpr($3->pos, $3->u.num));
 }| IDENTIFIER LBRACKET IDENTIFIER RBRACKET{
   $$ = A_ArrayExpr($1->pos, A_IdExprLVal($1->pos, $1->u.id), A_IdIndexExpr($3->pos, $3->u.id));
+}| LeftVal LBRACKET INT_LITERAL RBRACKET
+{
+  $$ = A_ArrayExpr($1->pos, $1, A_NumIndexExpr($3->pos, $3->u.num));
+}| LeftVal LBRACKET IDENTIFIER RBRACKET
+{
+  $$ = A_ArrayExpr($1->pos, $1, A_IdIndexExpr($3->pos, $3->u.id));
 };
 
 MemberExpr: IDENTIFIER DOT IDENTIFIER
 {
   $$ = A_MemberExpr($1->pos, A_IdExprLVal($1->pos, $1->u.id), $3->u.id);
+}|
+LeftVal DOT IDENTIFIER
+{
+  $$ = A_MemberExpr($1->pos, $1, $3->u.id);
 };
 
 ArithUExpr: SUB ExprUnit
@@ -340,6 +350,7 @@ LeftVal: IDENTIFIER
 {
   $$ = A_MemberExprLVal($1->pos, $1);
 };
+
 
 AssignStmt: LeftVal ASSIGN RightVal SEMICOLON
 {
