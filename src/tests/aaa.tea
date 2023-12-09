@@ -13,10 +13,13 @@ struct baz {
     y:int
 }
 
+fn test(a:int,b:int)->int;
+
 fn main()->int {
+    test(1,2);
     let foos[10]: foo;
     foos[1].x = 1;
     foos[2].b[1].x = 2;
-    foos[3].b[2].bz[3].y = 3;
+    foos[3].b[2].bz[3].y = test(foos[1].x ,foos[2].b[1].x);
     ret foos[1].x + foos[3].b[4].x + foos[4].b[5].bz[6].y;
 }

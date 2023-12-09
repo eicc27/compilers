@@ -432,7 +432,7 @@ std::vector<LLVMIR::L_def *> ast2llvmProg_first(aA_program p) {
       }
       if (funcReturnMap.find(*v->u.fnDeclStmt->fnDecl->id) ==
           funcReturnMap.end())
-        funcReturnMap.emplace(*v->u.fnDeclStmt->fnDecl->id, std::move(type));
+        funcReturnMap.emplace(*v->u.fnDeclStmt->fnDecl->id, type);
       vector<TempDef> args;
       for (const auto &decl : v->u.fnDeclStmt->fnDecl->paramDecl->varDecls) {
         if (decl->kind == A_varDeclScalarKind) {
@@ -592,6 +592,38 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
   return res;
 }
 
+//生成函数调用的L_stm
+list<LLVMIR::L_stm *> Gen_callStmtKind(aA_callStmt callStmt){
+   aA_fnCall fnCall = callStmt->fnCall;
+   string fnName=*(fnCall->fn);
+   vector<AS_operand *> args;
+   list<LLVMIR::L_stm *> instrs;
+   //对参数列表中的每一个参数(右值)进行转换，TODO
+   for(aA_rightVal rightVal:fnCall->vals){
+    args.emplace_back(ast2llvmRightVal(rightVal));
+    instrs.insert(instrs.end(), emit_irs.begin(), emit_irs.end());
+    emit_irs.clear();
+   }
+   //保证函数一定声明或者定义过
+   if(funcReturnMap.count(fnName)==0){
+    assert(0);
+   }
+   FuncType funcType = funcReturnMap[fnName];
+   if(funcType.type==ReturnType::INT_TYPE) {
+    Temp_temp* intTemp= Temp_newtemp_int_ptr(0);
+    instrs.emplace_back(L_Call(fnName,AS_Operand_Temp(intTemp),args));
+   }else if(funcType.type==ReturnType::STRUCT_TYPE){
+    Temp_temp* structTemp = Temp_newtemp_struct_ptr(0,funcType.structname);
+    instrs.emplace_back(L_Call(fnName,AS_Operand_Temp(structTemp),args));
+   }else if(funcType.type==ReturnType::VOID_TYPE){
+    instrs.emplace_back(L_Voidcall(fnName,args)) ;
+   }else{
+    assert(0);
+   }
+   return instrs;
+
+}
+
 vector<L_stm *> Gen_assignStmtKind(aA_assignStmt stmt) {
   auto left = ast2llvmLeftVal(stmt->leftVal); // Geps in llvm
   auto right = ast2llvmRightVal(stmt->rightVal);
@@ -676,8 +708,11 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
       instrs.insert(instrs.end(), v.begin(), v.end());
       break;
     }
-    case A_callStmtKind:
+    case A_callStmtKind:{
+      auto v = Gen_callStmtKind(stmt->u.callStmt);
+      instrs.insert(instrs.end(), v.begin(), v.end());
       break;
+    }
     case A_ifStmtKind:
       break;
     case A_whileStmtKind:
@@ -963,7 +998,7 @@ AS_operand *ast2llvmArithBiOpExpr(aA_arithBiOpExpr a) {
     break;
   }
   }
-  auto op = AS_Operand_Temp(Temp_newtemp_int_ptr(0)); // only int can be arith
+  auto op = AS_Operand_Temp(Temp_newtemp_int()); // only int can be arith
   auto stm = L_Binop(kind, left, right, op);
   emit_irs.push_back(stm);
   return op;
@@ -1053,9 +1088,9 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
     auto fn = funcReturnMap.find(*u->fn)->second;
     AS_operand *op;
     if (fn.type == ReturnType::INT_TYPE) {
-      op = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
+      op = AS_Operand_Temp(Temp_newtemp_int());
     } else if (fn.type == ReturnType::STRUCT_TYPE) {
-      op = AS_Operand_Temp(Temp_newtemp_struct_ptr(0, fn.structname));
+      op = AS_Operand_Temp(Temp_newtemp_struct( fn.structname));
     } else {
       op = nullptr;
     }
@@ -1115,13 +1150,13 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
     AS_operand *op;
     AS_operand *newop;
     if (memberinfo.def.kind == TempType::INT_TEMP) {
-      op = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
-      newop = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
+      op = AS_Operand_Temp(Temp_newtemp_int());
+      newop = AS_Operand_Temp(Temp_newtemp_int());
     } else if (memberinfo.def.kind == TempType::STRUCT_TEMP) {
       op = AS_Operand_Temp(
-          Temp_newtemp_struct_ptr(0, memberinfo.def.structname));
+          Temp_newtemp_struct(memberinfo.def.structname));
       newop = AS_Operand_Temp(
-          Temp_newtemp_struct_ptr(0, memberinfo.def.structname));
+          Temp_newtemp_struct(memberinfo.def.structname));
     } else if (memberinfo.def.kind == TempType::INT_PTR) {
       op = AS_Operand_Temp(Temp_newtemp_int_ptr(memberinfo.def.len));
       newop = AS_Operand_Temp(Temp_newtemp_int_ptr(memberinfo.def.len));

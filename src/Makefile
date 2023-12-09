@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -std=c++17 -g
+CXXFLAGS = -stdlib=libc++ -std=c++17 -g
 
 TESTCASE_DIR := my_tests
 TESTCASES = $(wildcard $(TESTCASE_DIR)/*.tea)
