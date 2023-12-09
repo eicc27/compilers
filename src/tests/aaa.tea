@@ -1,25 +1,34 @@
-struct foo {
-    x:int,
-    b[10]: bar
+struct Node {
+    l:int,
+    r:int
 }
 
-struct bar {
-    x:int,
-    bz[10]: baz
+fn foo(c:Node) {
+    c.l = getint();
+    c.r = getint();
+    ret;
 }
 
-struct baz {
-    x:int,
-    y:int
+fn baz(c[10]:Node) {
+    c[2].l = getint();
+    c[2].r = getint();
+    ret;
 }
 
-fn test(a:int,b:int)->int;
+let d:Node;
+let e[10]:Node;
 
-fn main()->int {
-    test(1,2);
-    let foos[10]: foo;
-    foos[1].x = 1;
-    foos[2].b[1].x = 2;
-    foos[3].b[2].bz[3].y = test(foos[1].x ,foos[2].b[1].x);
-    ret foos[1].x + foos[3].b[4].x + foos[4].b[5].bz[6].y;
+fn main()->int{
+    _sysy_starttime(13);
+    let c:Node;
+    c.l = 1;
+    c.r = 2;
+    foo(c);
+    foo(d);
+    baz(e);
+    putint(c.l+c.r);
+    putint(d.l+d.r);
+    putint(e[2].l+e[2].r);
+    _sysy_stoptime(19);
+    ret 0;
 }

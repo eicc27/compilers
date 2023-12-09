@@ -7,7 +7,7 @@ extern int line, col;
 %}
 
 digit       [0-9]
-nondigit    [a-zA-Z]
+nondigit    [a-zA-Z_]
 identifier  {nondigit}({nondigit}|{digit})*
 number      [1-9]{digit}*|0
 

@@ -218,24 +218,31 @@ std::vector<LLVMIR::L_def *> ast2llvmProg_first(aA_program p) {
   vector<L_def *> defs;
   defs.push_back(
       L_Funcdecl("getch", vector<TempDef>(), FuncType(ReturnType::INT_TYPE)));
+  funcReturnMap.emplace("getch", FuncType(ReturnType::INT_TYPE));
   defs.push_back(
       L_Funcdecl("getint", vector<TempDef>(), FuncType(ReturnType::INT_TYPE)));
+  funcReturnMap.emplace("getint", FuncType(ReturnType::INT_TYPE));
   defs.push_back(L_Funcdecl("putch",
                             vector<TempDef>{TempDef(TempType::INT_TEMP)},
                             FuncType(ReturnType::VOID_TYPE)));
+  funcReturnMap.emplace("putch", FuncType(ReturnType::VOID_TYPE));
   defs.push_back(L_Funcdecl("putint",
                             vector<TempDef>{TempDef(TempType::INT_TEMP)},
                             FuncType(ReturnType::VOID_TYPE)));
+  funcReturnMap.emplace("putint", FuncType(ReturnType::VOID_TYPE));
   defs.push_back(L_Funcdecl("putarray",
                             vector<TempDef>{TempDef(TempType::INT_TEMP),
                                             TempDef(TempType::INT_PTR, -1)},
                             FuncType(ReturnType::VOID_TYPE)));
+  funcReturnMap.emplace("putarray", FuncType(ReturnType::VOID_TYPE));
   defs.push_back(L_Funcdecl("_sysy_starttime",
                             vector<TempDef>{TempDef(TempType::INT_TEMP)},
                             FuncType(ReturnType::VOID_TYPE)));
+  funcReturnMap.emplace("_sysy_starttime", FuncType(ReturnType::VOID_TYPE));
   defs.push_back(L_Funcdecl("_sysy_stoptime",
                             vector<TempDef>{TempDef(TempType::INT_TEMP)},
                             FuncType(ReturnType::VOID_TYPE)));
+  funcReturnMap.emplace("_sysy_stoptime", FuncType(ReturnType::VOID_TYPE));
   cout << "programElements size: " << p->programElements.size() << endl;
   for (const auto &v : p->programElements) {
     switch (v->kind) {
@@ -508,16 +515,19 @@ std::vector<Func_local *> ast2llvmProg_second(aA_program p) {
 
 vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
   vector<L_stm *> res;
+  cout << "Gen_varDeclStmtKind" << endl;
   if (stmt->kind == A_varDeclStmtType::A_varDeclKind) {
     aA_varDecl varDecl = stmt->u.varDecl;
     if (varDecl->kind == A_varDeclType::A_varDeclScalarKind) {
       aA_varDeclScalar declScalar = varDecl->u.declScalar;
       if (declScalar->type->type == A_dataType::A_nativeTypeKind) {
         auto tmp = Temp_newtemp_int_ptr(0);
+        cout << "VarDecl->Scalar->Int id: " << *declScalar->id << endl;
         localVarMap.emplace(*declScalar->id, tmp);
         res.push_back(L_Alloca(AS_Operand_Temp(tmp)));
       } else if (declScalar->type->type == A_dataType::A_structTypeKind) {
         auto tmp = Temp_newtemp_struct_ptr(0, *declScalar->type->u.structType);
+        cout << "VarDecl->Scalar->Struct id: " << *declScalar->id << endl;
         localVarMap.emplace(*declScalar->id, tmp);
         res.push_back(L_Alloca(AS_Operand_Temp(tmp)));
       }
@@ -525,11 +535,13 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
       aA_varDeclArray declArray = varDecl->u.declArray;
       if (declArray->type->type == A_dataType::A_nativeTypeKind) {
         auto tmp = Temp_newtemp_int_ptr(declArray->len);
+        cout << "VarDecl->Array->Int id: " << *declArray->id << endl;
         localVarMap.emplace(*declArray->id, tmp);
         res.push_back(L_Alloca(AS_Operand_Temp(tmp)));
       } else if (declArray->type->type == A_dataType::A_structTypeKind) {
         auto tmp = Temp_newtemp_struct_ptr(declArray->len,
                                            *declArray->type->u.structType);
+        cout << "VarDecl->Array->Struct id: " << *declArray->id << endl;
         localVarMap.emplace(*declArray->id, tmp);
         res.push_back(L_Alloca(AS_Operand_Temp(tmp)));
       }
@@ -541,6 +553,7 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
       if (defScalar->type->type == A_dataType::A_nativeTypeKind) {
         auto tmp = Temp_newtemp_int_ptr(0);
         auto opt = AS_Operand_Temp(tmp);
+        cout << "defScalar->nativeType->id: " << *defScalar->id << endl;
         localVarMap.emplace(*defScalar->id, tmp);
         res.push_back(L_Alloca(opt));
         cout << "defScalar->val->kind: " << defScalar->val->kind << endl;
@@ -549,6 +562,7 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
       } else if (defScalar->type->type == A_dataType::A_structTypeKind) {
         auto tmp = Temp_newtemp_struct_ptr(0, *defScalar->type->u.structType);
         auto opt = AS_Operand_Temp(tmp);
+        cout << "defScalar->structType->id: " << *defScalar->id << endl;
         localVarMap.emplace(*defScalar->id, tmp);
         res.push_back(L_Alloca(opt));
         auto op = ast2llvmRightVal(defScalar->val);
@@ -559,6 +573,7 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
       if (defArray->type->type == A_dataType::A_nativeTypeKind) {
         auto tmp = Temp_newtemp_int_ptr(defArray->len);
         auto opt = AS_Operand_Temp(tmp);
+        cout << "defArray->nativeType->id: " << *defArray->id << endl;
         localVarMap.emplace(*defArray->id, tmp);
         res.push_back(L_Alloca(opt));
         auto i = 0;
@@ -573,6 +588,7 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
         auto tmp = Temp_newtemp_struct_ptr(defArray->len,
                                            *defArray->type->u.structType);
         auto opt = AS_Operand_Temp(tmp);
+        cout << "defArray->structType->id: " << *defArray->id << endl;
         localVarMap.emplace(*defArray->id, tmp);
         res.push_back(L_Alloca(opt));
         auto i = 0;
@@ -592,36 +608,35 @@ vector<L_stm *> Gen_varDeclStmtKind(aA_varDeclStmt stmt) {
   return res;
 }
 
-//生成函数调用的L_stm
-list<LLVMIR::L_stm *> Gen_callStmtKind(aA_callStmt callStmt){
-   aA_fnCall fnCall = callStmt->fnCall;
-   string fnName=*(fnCall->fn);
-   vector<AS_operand *> args;
-   list<LLVMIR::L_stm *> instrs;
-   //对参数列表中的每一个参数(右值)进行转换，TODO
-   for(aA_rightVal rightVal:fnCall->vals){
+// 生成函数调用的L_stm
+list<LLVMIR::L_stm *> Gen_callStmtKind(aA_callStmt callStmt) {
+  aA_fnCall fnCall = callStmt->fnCall;
+  string fnName = *(fnCall->fn);
+  vector<AS_operand *> args;
+  list<LLVMIR::L_stm *> instrs;
+  // 对参数列表中的每一个参数(右值)进行转换，TODO
+  for (aA_rightVal rightVal : fnCall->vals) {
     args.emplace_back(ast2llvmRightVal(rightVal));
     instrs.insert(instrs.end(), emit_irs.begin(), emit_irs.end());
     emit_irs.clear();
-   }
-   //保证函数一定声明或者定义过
-   if(funcReturnMap.count(fnName)==0){
+  }
+  // 保证函数一定声明或者定义过
+  if (funcReturnMap.count(fnName) == 0) {
     assert(0);
-   }
-   FuncType funcType = funcReturnMap[fnName];
-   if(funcType.type==ReturnType::INT_TYPE) {
-    Temp_temp* intTemp= Temp_newtemp_int_ptr(0);
-    instrs.emplace_back(L_Call(fnName,AS_Operand_Temp(intTemp),args));
-   }else if(funcType.type==ReturnType::STRUCT_TYPE){
-    Temp_temp* structTemp = Temp_newtemp_struct_ptr(0,funcType.structname);
-    instrs.emplace_back(L_Call(fnName,AS_Operand_Temp(structTemp),args));
-   }else if(funcType.type==ReturnType::VOID_TYPE){
-    instrs.emplace_back(L_Voidcall(fnName,args)) ;
-   }else{
+  }
+  FuncType funcType = funcReturnMap[fnName];
+  if (funcType.type == ReturnType::INT_TYPE) {
+    Temp_temp *intTemp = Temp_newtemp_int_ptr(0);
+    instrs.emplace_back(L_Call(fnName, AS_Operand_Temp(intTemp), args));
+  } else if (funcType.type == ReturnType::STRUCT_TYPE) {
+    Temp_temp *structTemp = Temp_newtemp_struct_ptr(0, funcType.structname);
+    instrs.emplace_back(L_Call(fnName, AS_Operand_Temp(structTemp), args));
+  } else if (funcType.type == ReturnType::VOID_TYPE) {
+    instrs.emplace_back(L_Voidcall(fnName, args));
+  } else {
     assert(0);
-   }
-   return instrs;
-
+  }
+  return instrs;
 }
 
 vector<L_stm *> Gen_assignStmtKind(aA_assignStmt stmt) {
@@ -650,13 +665,13 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
     assert(0);
   }
   int num = 0;
-
   cout << "vars size:" << vars.size() << endl;
   for (auto var : vars) {
     cout << "var kind: " << var->kind << endl;
     TempType kind;
     int len;
     string structname;
+    Temp_temp *tmp;
     switch (var->kind) {
     case A_varDeclScalarKind: {
       // cout << var->u.declScalar->type->type << endl;
@@ -664,10 +679,16 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
         kind = TempType::STRUCT_TEMP;
         len = 0;
         structname = *var->u.declScalar->type->u.structType;
+        tmp = Temp_newtemp_struct_ptr(0, structname);
+        // register into local var map
+        localVarMap.emplace(*var->u.declScalar->id, tmp);
       } else {
         kind = TempType::INT_TEMP;
         len = 0;
         structname = "";
+        // register into local var map
+        tmp = Temp_newtemp_int_ptr(0);
+        localVarMap.emplace(*var->u.declScalar->id, tmp);
       }
       break;
     }
@@ -676,19 +697,23 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
         kind = TempType::STRUCT_PTR;
         len = var->u.declArray->len;
         structname = *var->u.declArray->type->u.structType;
+        // register into local var map
+        tmp = Temp_newtemp_struct_ptr(len, structname);
+        localVarMap.emplace(*var->u.declArray->id, tmp);
       } else {
         kind = TempType::INT_PTR;
         len = var->u.declArray->len;
         structname = "";
+        // register into local var map
+        tmp = Temp_newtemp_int_ptr(var->u.declArray->len);
+        localVarMap.emplace(*var->u.declArray->id, tmp);
       }
       break;
     }
     default:
       assert(0);
     }
-    cout << "tmpdef" << endl;
-    auto tmpdef = Temp_temp(num++, kind, len, structname);
-    args.push_back(&tmpdef);
+    args.push_back(tmp);
   }
   list<LLVMIR::L_stm *> instrs;
   instrs.push_back(L_Label(Temp_newlabel()));
@@ -708,7 +733,7 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
       instrs.insert(instrs.end(), v.begin(), v.end());
       break;
     }
-    case A_callStmtKind:{
+    case A_callStmtKind: {
       auto v = Gen_callStmtKind(stmt->u.callStmt);
       instrs.insert(instrs.end(), v.begin(), v.end());
       break;
@@ -827,10 +852,11 @@ AS_operand *ast2llvmLeftVal(aA_leftVal l) {
   case A_leftValType::A_varValKind: {
     cout << "VarValKind" << endl;
     auto u = l->u.id;
+    cout << "found id: " << *u << endl;
     // find var in globalVarMap or localVarMap
     auto local = localVarMap.find(*u);
-    cout << "found local: " << local->second << endl;
     if (local != localVarMap.end()) { // found in local
+      cout << "found local: " << local->second << endl;
       auto tmp = local->second;
       return AS_Operand_Temp(tmp);
     }
@@ -1045,38 +1071,12 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
     AS_operand *op;
     if (local != localVarMap.end()) { // found in local
       auto tmp = local->second;
-      if (tmp->type == TempType::INT_PTR) {
-        op = AS_Operand_Temp(Temp_newtemp_int_ptr(tmp->len));
-      } else if (tmp->type == TempType::STRUCT_PTR) {
-        op =
-            AS_Operand_Temp(Temp_newtemp_struct_ptr(tmp->len, tmp->structname));
-      } else if (tmp->type == TempType::INT_TEMP) {
-        op = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
-      } else if (tmp->type == TempType::STRUCT_TEMP) {
-        op = AS_Operand_Temp(Temp_newtemp_struct_ptr(0, tmp->structname));
-      } else {
-        assert(0);
-      }
-      emit_irs.push_back(L_Load(op, AS_Operand_Temp(tmp)));
-      return op;
+      return AS_Operand_Temp(tmp);
     }
     auto global = globalVarMap.find(*u);
     if (global != globalVarMap.end()) { // found in global
       auto name = global->second;
-      if (name->type == TempType::INT_PTR) {
-        op = AS_Operand_Temp(Temp_newtemp_int_ptr(name->len));
-      } else if (name->type == TempType::STRUCT_PTR) {
-        op = AS_Operand_Temp(
-            Temp_newtemp_struct_ptr(name->len, name->structname));
-      } else if (name->type == TempType::INT_TEMP) {
-        op = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
-      } else if (name->type == TempType::STRUCT_TEMP) {
-        op = AS_Operand_Temp(Temp_newtemp_struct_ptr(0, name->structname));
-      } else {
-        assert(0);
-      }
-      emit_irs.push_back(L_Load(op, AS_Operand_Name(name)));
-      return op;
+      return AS_Operand_Name(name);
     }
     assert(0); // not found, raise error
   }
@@ -1090,7 +1090,7 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
     if (fn.type == ReturnType::INT_TYPE) {
       op = AS_Operand_Temp(Temp_newtemp_int());
     } else if (fn.type == ReturnType::STRUCT_TYPE) {
-      op = AS_Operand_Temp(Temp_newtemp_struct( fn.structname));
+      op = AS_Operand_Temp(Temp_newtemp_struct(fn.structname));
     } else {
       op = nullptr;
     }
@@ -1134,17 +1134,17 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
       assert(0);
     auto stm = L_Gep(op, lval, idx);
     emit_irs.push_back(stm);
-    auto load = L_Load(newop, op);
-    emit_irs.push_back(load);
-    return newop;
+    return op;
   }
   case A_memberExprKind: {
     cout << "MemberExprKind: " << endl;
     auto u = e->u.memberExpr;
     auto lval = ast2llvmLeftVal(u->structId);
     cout << "found lval" << endl;
-    auto structinfo = structInfoMap.find(lval->kind == OperandKind::NAME ? lval->u.NAME->structname : lval->u.TEMP->structname)->second;
-    cout << "found structinfo" << endl;
+    auto name = lval->kind == OperandKind::NAME ? lval->u.NAME->structname
+                                                : lval->u.TEMP->structname;
+    auto structinfo = structInfoMap.find(name)->second;
+    cout << "found structinfo: " << name << endl;
     auto memberinfo = structinfo.memberinfos.find(*u->memberId)->second;
     cout << "found memberinfo" << endl;
     AS_operand *op;
@@ -1153,18 +1153,16 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
       op = AS_Operand_Temp(Temp_newtemp_int());
       newop = AS_Operand_Temp(Temp_newtemp_int());
     } else if (memberinfo.def.kind == TempType::STRUCT_TEMP) {
-      op = AS_Operand_Temp(
-          Temp_newtemp_struct(memberinfo.def.structname));
-      newop = AS_Operand_Temp(
-          Temp_newtemp_struct(memberinfo.def.structname));
+      op = AS_Operand_Temp(Temp_newtemp_struct(memberinfo.def.structname));
+      newop = AS_Operand_Temp(Temp_newtemp_struct(memberinfo.def.structname));
     } else if (memberinfo.def.kind == TempType::INT_PTR) {
       op = AS_Operand_Temp(Temp_newtemp_int_ptr(memberinfo.def.len));
       newop = AS_Operand_Temp(Temp_newtemp_int_ptr(memberinfo.def.len));
     } else if (memberinfo.def.kind == TempType::STRUCT_PTR) {
       op = AS_Operand_Temp(Temp_newtemp_struct_ptr(memberinfo.def.len,
                                                    memberinfo.def.structname));
-      newop = AS_Operand_Temp(Temp_newtemp_struct_ptr(memberinfo.def.len,
-                                                      memberinfo.def.structname));
+      newop = AS_Operand_Temp(Temp_newtemp_struct_ptr(
+          memberinfo.def.len, memberinfo.def.structname));
     }
     auto stm = L_Gep(op, lval, AS_Operand_Const(memberinfo.offset));
     emit_irs.push_back(stm);

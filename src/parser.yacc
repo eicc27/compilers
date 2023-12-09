@@ -459,6 +459,10 @@ WhileStmt: WHILE LPAREN BoolExpr RPAREN CodeBlock
 ReturnStmt: RETURN RightVal SEMICOLON
 {
   $$ = A_ReturnStmt($1, $2);
+} 
+| 
+RETURN SEMICOLON {
+  $$ = A_ReturnStmt($1, NULL);
 };
 
 CodeBlockStmt: SEMICOLON

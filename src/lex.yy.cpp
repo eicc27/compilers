@@ -1,6 +1,6 @@
-#line 2 "lex.yy.cpp"
+#line 1 "lex.yy.cpp"
 
-#line 4 "lex.yy.cpp"
+#line 3 "lex.yy.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -403,7 +403,7 @@ static const YY_CHAR yy_ec[256] =
        20,   21,    1,    1,   22,   22,   22,   22,   22,   22,
        22,   22,   22,   22,   22,   22,   22,   22,   22,   22,
        22,   22,   22,   22,   22,   22,   22,   22,   22,   22,
-       23,    1,   24,    1,    1,    1,   25,   26,   27,   22,
+       23,    1,   24,    1,   22,    1,   25,   26,   27,   22,
 
        28,   29,   22,   30,   31,   22,   32,   33,   22,   34,
        35,   22,   22,   36,   37,   38,   39,   22,   40,   22,
@@ -602,9 +602,9 @@ char *yytext;
 #include "TeaplAst.h"
 #include "y.tab.hpp"
 extern int line, col;
-#line 606 "lex.yy.cpp"
+#line 605 "lex.yy.cpp"
 
-#line 608 "lex.yy.cpp"
+#line 607 "lex.yy.cpp"
 
 #define INITIAL 0
 #define COMMENT_INLINE 1
@@ -825,7 +825,7 @@ YY_DECL
 	{
 #line 16 "lexer.lex"
 
-#line 829 "lex.yy.cpp"
+#line 828 "lex.yy.cpp"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1126,7 +1126,7 @@ YY_RULE_SETUP
 #line 65 "lexer.lex"
 ECHO;
 	YY_BREAK
-#line 1130 "lex.yy.cpp"
+#line 1129 "lex.yy.cpp"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(COMMENT_INLINE):
 case YY_STATE_EOF(COMMENT_BLOCK):
