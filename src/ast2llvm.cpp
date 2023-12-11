@@ -720,11 +720,7 @@ list<LLVMIR::L_stm *> Gen_Block(Temp_label *blockLabel,
     return instrs;
   }
   instrs.push_back(L_Label(blockLabel));
-  auto i = 0;
   for (auto stmt : *stmts) {
-    auto isLast =
-        ++i == stmts->size(); // 如果最后一个block是代码块（含有if/else,
-                              // while），必须向最后的label中填写return语句
     switch (stmt->kind) {
     case A_nullStmtKind:
       break;
@@ -748,15 +744,11 @@ list<LLVMIR::L_stm *> Gen_Block(Temp_label *blockLabel,
     case A_ifStmtKind: {
       auto v = Gen_ifStmtKind(stmt->u.ifStmt, continueLabel, breakLabel);
       instrs.insert(instrs.end(), v.begin(), v.end());
-      if (isLast)
-        instrs.push_back(L_Ret(AS_Operand_Const(0)));
       break;
     }
     case A_whileStmtKind: {
       auto v = Gen_whileStmtKind(stmt->u.whileStmt);
       instrs.insert(instrs.end(), v.begin(), v.end());
-      if (isLast)
-        instrs.push_back(L_Ret(AS_Operand_Const(0)));
       break;
     }
     case A_returnStmtKind: {
@@ -786,9 +778,6 @@ list<LLVMIR::L_stm *> Gen_Block(Temp_label *blockLabel,
     }
     default:
       break;
-    }
-    if (isLast && stmt->kind != A_returnStmtKind) { // 如果函数最后没有ret语句
-      instrs.push_back(L_Ret(nullptr)); // 加上ret void
     }
   }
   return instrs;
@@ -863,6 +852,20 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
   }
   auto funLabel = Temp_newlabel();
   auto instrs = Gen_Block(funLabel, nullptr, nullptr, &f->stmts);
+  // 如果函数的最后一个block不是return,需要加上一句示例return,以避免出现空label的情况
+  auto isReturn = f->stmts.back()->kind == A_returnStmtKind;
+  if (!isReturn) {
+    // 根据函数返回值类型加return
+    if (ret.type == ReturnType::INT_TYPE) {
+      instrs.push_back(L_Ret(AS_Operand_Const(0)));
+    } else if (ret.type == ReturnType::STRUCT_TYPE) {
+      instrs.push_back(L_Ret(AS_Operand_Const(0)));
+    } else if (ret.type == ReturnType::VOID_TYPE) {
+      instrs.push_back(L_Ret(nullptr));
+    } else {
+      assert(0);
+    }
+  }
   auto func = new Func_local(*f->fnDecl->id, ret, args, instrs);
   return func;
 }
@@ -898,8 +901,6 @@ AS_operand *ast2llvmLeftVal(aA_leftVal l) {
     auto u = l->u.arrExpr;
     auto arr = ast2llvmLeftVal(u->arr);
     auto idx = ast2llvmIndexExpr(u->idx);
-
-    cout << "error" << endl;
     AS_operand *res;
     if (arr->kind == OperandKind::TEMP) {
       auto u = arr->u.TEMP;
@@ -993,6 +994,8 @@ AS_operand *ast2llvmIndexExpr(aA_indexExpr index) {
         emit_irs.emplace_back(L_Load(dstOp, ptrOp));
         return dstOp;
       } else if (tmp->type == TempType::STRUCT_PTR) {
+        return ptrOp;
+      } else if (tmp->type == TempType::INT_TEMP || tmp->type == TempType::STRUCT_TEMP) {
         return ptrOp;
       }
       return dstOp;
