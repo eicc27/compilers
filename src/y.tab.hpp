@@ -90,7 +90,8 @@ extern int yydebug;
     BREAK = 291,                   /* BREAK  */
     IF = 292,                      /* IF  */
     ELSE = 293,                    /* ELSE  */
-    WHILE = 294                    /* WHILE  */
+    WHILE = 294,                   /* WHILE  */
+    NEG = 295                      /* NEG  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -136,6 +137,7 @@ extern int yydebug;
 #define IF 292
 #define ELSE 293
 #define WHILE 294
+#define NEG 295
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -182,7 +184,7 @@ union YYSTYPE
   A_ifStmt ifStmt;
   A_whileStmt whileStmt;
 
-#line 186 "y.tab.hpp"
+#line 188 "y.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

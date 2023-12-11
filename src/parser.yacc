@@ -60,6 +60,10 @@ extern int  yywrap();
 %token <pos> ASSIGN COLON LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE  COMMA DOT
 %token <pos> CONTINUE BREAK IF ELSE WHILE
 
+%left ADD SUB
+%left MUL DIV
+%nonassoc NEG
+
 %type <leftVal> LeftVal
 %type <rightVal> RightVal
 %type <program> Program
@@ -185,7 +189,7 @@ LeftVal DOT IDENTIFIER
   $$ = A_MemberExpr($1->pos, $1, $3->u.id);
 };
 
-ArithUExpr: SUB ExprUnit
+ArithUExpr: SUB ExprUnit %prec NEG
 {
   $$ = A_ArithUExpr($1, A_neg, $2);
 };
