@@ -12,7 +12,7 @@ test_single() {
 	if [ $? != 0 ]; then
 		echo fail; exit -1
 	fi
-    llvm-link ./tests/$test_name.ll sylib.ll -S -o ./output/$test_name.ll
+    llvm-link-17 ./tests/$test_name.ll sylib.ll -S -o ./output/$test_name.ll
 	if [ $? != 0 ]; then
 		echo "fail to link"; exit -1
 	fi
