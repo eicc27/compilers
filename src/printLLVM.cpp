@@ -558,9 +558,7 @@ void LLVMIR::printL_prog(std::ostream &os, LLVMIR::L_prog *prog) {
 }
 
 void LLVMIR::printL_func(std::ostream &os, LLVMIR::L_func *func) {
-  cout << "printL_func" << endl;
   os << "define ";
-  printf("func ret type: %d\n", func->ret.type);
   switch (func->ret.type) {
   case ReturnType::VOID_TYPE: {
     os << "void ";
@@ -579,12 +577,9 @@ void LLVMIR::printL_func(std::ostream &os, LLVMIR::L_func *func) {
   }
   os << "@" << func->name << "(";
   bool first = true;
-  cout << func->args.size() << endl;
   // printf("%d\n", func->args[0]->type);
   for (int i = 0; i < func->args.size(); i++) {
-    cout << i << endl;
     auto v = func->args[i];
-    printf("arg type: %d\n", v->type);
     if (first) {
       first = false;
       os << " ";
@@ -614,7 +609,6 @@ void LLVMIR::printL_func(std::ostream &os, LLVMIR::L_func *func) {
     }
   }
   os << " ) {\n";
-  cout << "func blocks" << endl;
   for (const auto &b : func->blocks) {
     printL_block(os, b);
   }

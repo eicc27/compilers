@@ -116,32 +116,7 @@ fn mod(x:int,y:int)->int
 
 fn eval_op(op:int, lhs:int, rhs:int)->int
 {
-    // +
-    if (op == 43)
-    {
-        ret lhs + rhs;
-    }
-    // -
-    if (op == 45)
-    {
-        ret lhs - rhs;
-    }
-    // *
-    if (op == 42)
-    {
-        ret lhs * rhs;
-    }
-    // /
-    if (op == 47)
-    {
-        ret lhs / rhs;
-    }
-    // %
-    if (op == 37)
-    {
-        ret mod(lhs,rhs);
-    }
-    // other
+    
     ret 0;
 }
 
@@ -195,20 +170,10 @@ fn eval()->int
         let cur_op:int = stack_pop(ops);
         let rhs:int = stack_pop(oprs);
         let lhs:int = stack_pop(oprs);
-        stack_push(oprs, eval_op(cur_op, lhs, rhs));
+        let x:int = eval_op(, 0, 0);
+        stack_push(oprs, x);
     }
     ret stack_peek(oprs);
 }
 
-fn main()->int
-{
-    let count:int = getint();
-    getch();
-    next_token();
-    while (count!=0) {
-        putint(eval());
-        putch(10);
-        count = count - 1;
-    }
-    ret 0;
-}
+

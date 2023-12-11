@@ -221,8 +221,7 @@ L_block *LLVMIR::L_Block(const std::list<L_stm *> instrs) {
   } else if (jump_ins->type == L_StmKind::T_RETURN) {
     
   } else {
-    printf("warning: jump_ins type incorrect: %d\n", jump_ins->type);
-    // assert(0);
+    assert(0);
   }
   return new L_block(label, succs, instrs);
 }

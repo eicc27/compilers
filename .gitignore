@@ -3,3 +3,4 @@ src/**/*.ll
 src/**/*.ast
 src/*.o
 src/Makefile
+src/test-functional.sh

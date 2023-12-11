@@ -43,7 +43,6 @@ int main(int argc, char * argv[]) {
     
     freopen(argv[1], "r", stdin);  
     ofstream ASTStream;
-    std::cout <<  "print AST file" << endl;
     ASTStream.open(file_name+".ast");
     yyparse();
     aroot = aA_Program(root);
@@ -51,11 +50,9 @@ int main(int argc, char * argv[]) {
     ASTStream.close();
 
     // check_Prog(&std::cout, aroot);
-    std::cout << "print LL file" << endl;
     ofstream LLVMStream;
     LLVMStream.open(file_name + ".ll");
     auto prog = ast2llvm(aroot);
-    std::cout << "prog" << endl;
     printL_prog(LLVMStream,prog);
     LLVMStream.close();
     return 0;
