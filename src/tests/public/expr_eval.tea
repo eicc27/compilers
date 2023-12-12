@@ -8,8 +8,6 @@ let cur_token:int;
 fn next_char()->int
 {
     last_char = getch();
-    // putch(last_char);
-    // putch(10);
     ret last_char;
 }
 
@@ -37,7 +35,7 @@ fn is_num(c:int)->int
     }
 }
 
-fn next_token()->int // if possible update num, and update cur_token
+fn next_token()->int
 {
     while (is_space(last_char)!=0)
     {
@@ -50,11 +48,9 @@ fn next_token()->int // if possible update num, and update cur_token
         {
             num = num * 10 + last_char - 48;
         }
-        // putint(num);
-        // putch(10);
         cur_token = TOKEN_NUM;
     }
-    else // if not number or space
+    else
     {
         other = last_char;
         next_char();
@@ -77,7 +73,6 @@ fn panic()->int
 
 fn get_op_prec(op:int)->int
 {
-    putch(op);
     // +, -
     if (op == 43 || op == 45)
         {ret 10;}
@@ -155,7 +150,7 @@ fn eval()->int
     let oprs[256]:int;
     let ops[256]:int;
     let i:int = 0;
-    while(i < 256) // init oprs and ops
+    while(i < 256)
     {
         oprs[i] = 0;
         ops[i] = 0;
@@ -175,8 +170,6 @@ fn eval()->int
         let op:int = other;
         if (get_op_prec(op) == 0)
         {    break;}
-        kputch(10);
-        kputch(op);
         next_token();
         // handle operator
         while (stack_size(ops)!=0 && get_op_prec(stack_peek(ops)) >= get_op_prec(op))
@@ -210,7 +203,7 @@ fn eval()->int
 fn main()->int
 {   
     _sysy_starttime(205);
-    let count:int = getint(); // count of expressions
+    let count:int = getint();
     getch();
     next_token();
     while (count!=0) {
