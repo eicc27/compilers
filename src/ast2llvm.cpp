@@ -1377,12 +1377,13 @@ LLVMIR::L_func *ast2llvmFuncBlock(Func_local *f) {
   auto name = f->name;
   auto ret = f->ret;
   auto blocks = list<L_block *>();
+  // 获取到每一个基本块的指令集；基本块以label开头，以跳转语句或者return结束
   list<list<L_stm *>> block_instrs;
   for (auto instr : instrs) {
-    if (instr->type == L_StmKind::T_LABEL) {
+    if (instr->type == L_StmKind::T_LABEL) { // 为label时，向集合末尾添加一个新的空集合
       block_instrs.push_back(list<L_stm *>());
     }
-    block_instrs.back().push_back(instr);
+    block_instrs.back().push_back(instr); // 插入时，只需考虑最后一个集合
   }
   for (auto block_instr : block_instrs) {
     blocks.push_back(L_Block(block_instr));
@@ -1408,6 +1409,7 @@ void ast2llvm_moveAlloca(LLVMIR::L_func *f) {
       auto instr = *it;
       if (instr->type == L_StmKind::T_ALLOCA) {
         firstBlock->instrs.insert(++firstBlock->instrs.begin(), instr);
+        // 删除当前block的alloca指令，由于list实现是一个链表，直接使用reverse_iterator跳过当前元素
         it = reverse_iterator(instrs.erase(std::next(it).base()));
       } else {
         ++it;
