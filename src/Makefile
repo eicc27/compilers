@@ -1,8 +1,8 @@
 CXX = clang++
-CXXFLAGS = -stdlib=libc++ -std=c++11 -g
-#CXXFLAGS = -std=c++17 -g
+# CXXFLAGS = -stdlib=libc++ -std=c++11 -g
+CXXFLAGS = -std=c++17 -g
 
-TESTCASE_DIR := tests
+TESTCASE_DIR := error
 TESTCASES = $(wildcard $(TESTCASE_DIR)/*.tea)
 LLFILES = $(patsubst $(TESTCASE_DIR)/%.tea,$(TESTCASE_DIR)/%.ast,$(TESTCASES))
 

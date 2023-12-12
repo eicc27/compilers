@@ -1,5 +1,5 @@
 #!/bin/bash
-func_testcase_dir=$(realpath $(dirname "$0")/./tests)
+func_testcase_dir=$(realpath $(dirname "$0")/./error)
 test_single() {
 	clang -S -emit-llvm sylib.c -o sylib.ll
 	test_file=`realpath --relative-base=$func_testcase_dir $func_testcase_dir/$1.tea`	
@@ -12,14 +12,14 @@ test_single() {
 	if [ $? != 0 ]; then
 		echo fail; exit -1
 	fi
-    llvm-link-17 $func_testcase_dir/$test_name.ll sylib.ll -S -o ./output/$test_name.ll
+    llvm-link $func_testcase_dir/$test_name.ll sylib.ll -S -o ./output/$test_name.ll
 	if [ $? != 0 ]; then
 		echo $test_name "fail to link"; exit -1
 	fi
 	if [ -f $func_testcase_dir/$test_name.in ]; then
-    	lli-17  ./output/$test_name.ll < $func_testcase_dir/$test_name.in > output/$test_name.out
+    	lli  ./output/$test_name.ll < $func_testcase_dir/$test_name.in > output/$test_name.out
 	else
-    	lli-17  ./output/$test_name.ll > ./output/$test_name.out
+    	lli  ./output/$test_name.ll > ./output/$test_name.out
 	fi
 	echo -e $? >> ./output/$test_name.out
 	diff -Bb ./output/$test_name.out $func_testcase_dir/$test_name.out > /dev/null 2>/dev/null

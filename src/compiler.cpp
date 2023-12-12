@@ -9,7 +9,7 @@
 #include "ast2llvm.h"
 #include "printLLVM.h"
 
-#define YACCDEBUG 1
+#define YACCDEBUG 0
 
 using namespace std;
 using namespace LLVMIR;
@@ -33,14 +33,14 @@ int main(int argc, char * argv[]) {
     col = 1;
 
     string input_name = argv[1];
-    auto dot_pos = input_name.find('.');
+    auto dot_pos = input_name.rfind('.');
     if(dot_pos == input_name.npos)
     {
         cout << "input error";
         return -1;
     }
     string file_name(input_name.substr(0,dot_pos));
-    
+    cout << file_name << endl;
     freopen(argv[1], "r", stdin);  
     ofstream ASTStream;
     ASTStream.open(file_name+".ast");

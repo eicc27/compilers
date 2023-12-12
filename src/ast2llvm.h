@@ -33,7 +33,11 @@ struct Func_local {
 std::vector<LLVMIR::L_def *> ast2llvmProg_first(aA_program p);
 std::vector<Func_local *> ast2llvmProg_second(aA_program p);
 Func_local *ast2llvmFunc(aA_fnDef f);
-std::list<LLVMIR::L_stm *> Gen_Block(Temp_label * blockLabel,Temp_label* continueLabel,Temp_label * breakLabel,vector<aA_codeBlockStmt> * stmts);
+std::list<LLVMIR::L_stm *> Gen_Block(Temp_label *blockLabel,
+                                     Temp_label *continueLabel,
+                                     Temp_label *breakLabel,
+                                     vector<aA_codeBlockStmt> *stmts,
+                                     bool recursive = false);
 void ast2llvmBlock(aA_codeBlockStmt b, Temp_label *con_label = nullptr,
                    Temp_label *bre_label = nullptr);
 AS_operand *ast2llvmRightVal(aA_rightVal r);

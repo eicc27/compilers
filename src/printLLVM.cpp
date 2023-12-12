@@ -192,10 +192,9 @@ void LLVMIR::printL_stm(std::ostream &os, LLVMIR::L_stm *stm) {
         break;
       }
     } else {
-
       auto dst = stm->u.ALLOCA->dst;
       if (dst->kind == OperandKind::ICONST)
-        printf("warning: alloca dst is not tmp: type iconst\n");
+        printf("warning: alloca dst is not tmp: type iconst %d\n", dst->u.ICONST);
       else if (dst->kind == OperandKind::NAME)
         printf("warning: alloca dst is not tmp: type name\n");
       else

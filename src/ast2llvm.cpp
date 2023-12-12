@@ -5,11 +5,14 @@
 #include "temp.h"
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
+#include <iterator>
 #include <list>
 #include <ostream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -22,14 +25,15 @@ static unordered_map<string, Name_name *> globalVarMap;
 static unordered_map<string, Temp_temp *> localVarMap;
 static list<L_stm *> emit_irs;
 
-
 LLVMIR::L_prog *ast2llvm(aA_program p) {
   auto defs = ast2llvmProg_first(p);
   auto funcs = ast2llvmProg_second(p);
   vector<L_func *> funcs_block;
+  cout << "to function block" << endl;
   for (auto f : funcs) {
     funcs_block.push_back(ast2llvmFuncBlock(f));
   }
+  cout << "move alloca" << endl;
   for (auto &f : funcs_block) {
     ast2llvm_moveAlloca(f);
   }
@@ -589,16 +593,15 @@ vector<L_stm *> Gen_assignStmtKind(aA_assignStmt stmt) {
   vector<L_stm *> res;
   res.insert(res.end(), emit_irs.begin(), emit_irs.end());
   emit_irs.clear();
-  if(left->kind==OperandKind::TEMP&&left->u.TEMP->type==TempType::INT_TEMP){
-    AS_operand * temp = AS_Operand_Temp( Temp_newtemp_int_ptr(0));
+  if (left->kind == OperandKind::TEMP &&
+      left->u.TEMP->type == TempType::INT_TEMP) {
+    AS_operand *temp = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
     res.push_back(L_Store(right, temp));
     res.push_back(L_Load(left, temp));
-  }else {
+  } else {
     res.push_back(L_Store(right, left));
   }
-  
-  
-  
+
   return res;
 }
 
@@ -697,7 +700,8 @@ list<LLVMIR::L_stm *> Gen_whileStmtKind(aA_whileStmt whileStmt) {
 list<LLVMIR::L_stm *> Gen_Block(Temp_label *blockLabel,
                                 Temp_label *continueLabel,
                                 Temp_label *breakLabel,
-                                vector<aA_codeBlockStmt> *stmts) {
+                                vector<aA_codeBlockStmt> *stmts,
+                                bool recursive) {
   list<LLVMIR::L_stm *> instrs;
   if (stmts == nullptr) {
     return instrs;
@@ -795,19 +799,20 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
         kind = TempType::STRUCT_TEMP;
         len = 0;
         structname = *var->u.declScalar->type->u.structType;
-        tmp = Temp_newtemp_struct_ptr(0,structname);
+        tmp = Temp_newtemp_struct_ptr(0, structname);
         // register into local var map
         localVarMap.emplace(*var->u.declScalar->id, tmp);
       } else {
         kind = TempType::INT_TEMP;
         tmp = Temp_newtemp_int();
-        if(hasNativeArg==false){
+        if (hasNativeArg == false) {
           instrs.emplace_back(L_Label(Temp_newlabel()));
-          hasNativeArg =true;
+          hasNativeArg = true;
         }
-        Temp_temp * temp_ptr = Temp_newtemp_int_ptr(0);
+        Temp_temp *temp_ptr = Temp_newtemp_int_ptr(0);
         instrs.emplace_back(L_Alloca(AS_Operand_Temp(temp_ptr)));
-        instrs.emplace_back(L_Store(AS_Operand_Temp(tmp), AS_Operand_Temp(temp_ptr)));
+        instrs.emplace_back(
+            L_Store(AS_Operand_Temp(tmp), AS_Operand_Temp(temp_ptr)));
         // register into local var map
         localVarMap.emplace(*var->u.declScalar->id, temp_ptr);
       }
@@ -836,11 +841,12 @@ Func_local *ast2llvmFunc(aA_fnDef f) {
     }
     args.push_back(tmp);
   }
-  if(hasNativeArg){
+  if (hasNativeArg) {
     instrs.emplace_back(L_Jump(funLabel));
   }
-  auto block_instrs = Gen_Block(funLabel, nullptr, nullptr, &f->stmts);
-  instrs.insert(instrs.end(),block_instrs.begin(),block_instrs.end());
+  // 生成代码块。
+  auto block_instrs = Gen_Block(funLabel, nullptr, nullptr, &f->stmts, false);
+  instrs.insert(instrs.end(), block_instrs.begin(), block_instrs.end());
   // 如果函数的最后一个block不是return,需要加上一句示例return,以避免出现空label的情况
   auto isReturn = f->stmts.back()->kind == A_returnStmtKind;
   if (!isReturn) {
@@ -872,7 +878,7 @@ AS_operand *ast2llvmRightVal(aA_rightVal r) {
     break;
   }
   case A_boolExprValKind: {
-    return ast2llvmBoolExpr(r->u.boolExpr,nullptr,nullptr);
+    return ast2llvmBoolExpr(r->u.boolExpr, nullptr, nullptr);
     break;
   }
   default:
@@ -946,12 +952,12 @@ AS_operand *ast2llvmLeftVal(aA_leftVal l) {
     if (local != localVarMap.end()) { // found in local
       auto tmp = local->second;
       AS_operand *ptrOp = AS_Operand_Temp(tmp);
-      if(tmp->type==TempType::INT_TEMP){
-        Temp_temp*  left_ptr_temp = Temp_newtemp_int_ptr(0);
-        AS_operand * left_ptr = AS_Operand_Temp(left_ptr_temp);
+      if (tmp->type == TempType::INT_TEMP) {
+        Temp_temp *left_ptr_temp = Temp_newtemp_int_ptr(0);
+        AS_operand *left_ptr = AS_Operand_Temp(left_ptr_temp);
         emit_irs.emplace_back(L_Alloca(left_ptr));
         emit_irs.emplace_back(L_Store(ptrOp, left_ptr));
-        localVarMap[*u]= left_ptr_temp;
+        localVarMap[*u] = left_ptr_temp;
         return left_ptr;
       }
       return ptrOp;
@@ -984,7 +990,8 @@ AS_operand *ast2llvmIndexExpr(aA_indexExpr index) {
         return dstOp;
       } else if (tmp->type == TempType::STRUCT_PTR) {
         return ptrOp;
-      } else if (tmp->type == TempType::INT_TEMP || tmp->type == TempType::STRUCT_TEMP) {
+      } else if (tmp->type == TempType::INT_TEMP ||
+                 tmp->type == TempType::STRUCT_TEMP) {
         return ptrOp;
       }
       return dstOp;
@@ -1027,7 +1034,7 @@ AS_operand *ast2llvmBoolBiOpExpr(aA_boolBiOpExpr b, Temp_label *true_label,
   Temp_label *leftLabel = Temp_newlabel();
   Temp_label *rightLabel = Temp_newlabel();
   emit_irs.emplace_back(L_Jump(leftLabel));
-  if(true_label!=nullptr&&false_label!=nullptr){
+  if (true_label != nullptr && false_label != nullptr) {
     if (b->op == A_boolBiOp::A_and) {
       emit_irs.emplace_back(L_Label(leftLabel));
       AS_operand *left = ast2llvmBoolExpr(b->left, rightLabel, false_label);
@@ -1040,10 +1047,10 @@ AS_operand *ast2llvmBoolBiOpExpr(aA_boolBiOpExpr b, Temp_label *true_label,
       AS_operand *right = ast2llvmBoolExpr(b->right, true_label, false_label);
     }
     return AS_Operand_Temp(Temp_newtemp_int_ptr(0));
-  }else{
-    true_label=Temp_newlabel();
-    false_label=Temp_newlabel();
-    Temp_label* continueLabel = Temp_newlabel();
+  } else {
+    true_label = Temp_newlabel();
+    false_label = Temp_newlabel();
+    Temp_label *continueLabel = Temp_newlabel();
     if (b->op == A_boolBiOp::A_and) {
       emit_irs.emplace_back(L_Label(leftLabel));
       AS_operand *left = ast2llvmBoolExpr(b->left, rightLabel, false_label);
@@ -1061,11 +1068,11 @@ AS_operand *ast2llvmBoolBiOpExpr(aA_boolBiOpExpr b, Temp_label *true_label,
     emit_irs.emplace_back(L_Jump(continueLabel));
     emit_irs.emplace_back(L_Label(continueLabel));
     std::vector<std::pair<AS_operand *, Temp_label *>> vec;
-    std::pair<AS_operand *, Temp_label *> p1{AS_Operand_Const(1),true_label};
-    std::pair<AS_operand *, Temp_label *> p2{AS_Operand_Const(0),false_label};
+    std::pair<AS_operand *, Temp_label *> p1{AS_Operand_Const(1), true_label};
+    std::pair<AS_operand *, Temp_label *> p2{AS_Operand_Const(0), false_label};
     vec.push_back(p1);
     vec.push_back(p2);
-    AS_operand * val = AS_Operand_Temp( Temp_newtemp_int_ptr(0)) ;
+    AS_operand *val = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
     emit_irs.emplace_back(L_Phi(val, vec));
     return val;
   }
@@ -1121,9 +1128,9 @@ AS_operand *ast2llvmComOpExpr(aA_comExpr c, Temp_label *true_label,
   auto stm = L_Cmp(kind, left, right, dst); // dst is int1
   emit_irs.push_back(stm);
   if (true_label == nullptr || false_label == nullptr) {
-    true_label=Temp_newlabel();
-    false_label=Temp_newlabel();
-    Temp_label* continueLabel = Temp_newlabel();
+    true_label = Temp_newlabel();
+    false_label = Temp_newlabel();
+    Temp_label *continueLabel = Temp_newlabel();
     auto jmp = L_Cjump(dst, true_label, false_label);
     emit_irs.push_back(jmp);
     emit_irs.emplace_back(L_Label(true_label));
@@ -1132,11 +1139,11 @@ AS_operand *ast2llvmComOpExpr(aA_comExpr c, Temp_label *true_label,
     emit_irs.emplace_back(L_Jump(continueLabel));
     emit_irs.emplace_back(L_Label(continueLabel));
     std::vector<std::pair<AS_operand *, Temp_label *>> vec;
-    std::pair<AS_operand *, Temp_label *> p1{AS_Operand_Const(1),true_label};
-    std::pair<AS_operand *, Temp_label *> p2{AS_Operand_Const(0),false_label};
+    std::pair<AS_operand *, Temp_label *> p1{AS_Operand_Const(1), true_label};
+    std::pair<AS_operand *, Temp_label *> p2{AS_Operand_Const(0), false_label};
     vec.push_back(p1);
     vec.push_back(p2);
-    AS_operand * val = AS_Operand_Temp( Temp_newtemp_int_ptr(0)) ;
+    AS_operand *val = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
     emit_irs.emplace_back(L_Phi(val, vec));
     return val;
   }
@@ -1186,8 +1193,7 @@ AS_operand *ast2llvmArithUExpr(aA_arithUExpr a) {
     assert(0);
   auto expr = ast2llvmExprUnit(a->expr);
   auto left = AS_Operand_Const(0);
-  emit_irs.push_back(L_Alloca(left));
-  auto op = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
+  auto op = AS_Operand_Temp(Temp_newtemp_int());
   auto stm = L_Binop(L_binopKind::T_minus, left, expr, op);
   emit_irs.push_back(stm);
   return op;
@@ -1224,7 +1230,7 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
       AS_operand *ptrOp = AS_Operand_Temp(tmp);
       AS_operand *dstOp;
       if (tmp->type == TempType::INT_PTR) {
-        if(tmp->len!=0){
+        if (tmp->len != 0) {
           return ptrOp;
         }
         dstOp = AS_Operand_Temp(Temp_newtemp_int());
@@ -1232,12 +1238,12 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
         return dstOp;
       } else if (tmp->type == TempType::STRUCT_PTR) {
         return ptrOp;
-      } else if (tmp->type == TempType::INT_TEMP){
-        Temp_temp* temp_ptr = Temp_newtemp_int_ptr(0);
-        AS_operand * tempOp=AS_Operand_Temp(temp_ptr);
+      } else if (tmp->type == TempType::INT_TEMP) {
+        Temp_temp *temp_ptr = Temp_newtemp_int_ptr(0);
+        AS_operand *tempOp = AS_Operand_Temp(temp_ptr);
         emit_irs.emplace_back(L_Alloca(tempOp));
         emit_irs.emplace_back(L_Store(ptrOp, tempOp));
-        localVarMap[*u]=temp_ptr;
+        localVarMap[*u] = temp_ptr;
         return ptrOp;
       } else if (tmp->type == TempType::STRUCT_TEMP) {
         return ptrOp;
@@ -1371,9 +1377,43 @@ LLVMIR::L_func *ast2llvmFuncBlock(Func_local *f) {
   auto name = f->name;
   auto ret = f->ret;
   auto blocks = list<L_block *>();
-  blocks.push_back(L_Block(instrs));
+  list<list<L_stm *>> block_instrs;
+  for (auto instr : instrs) {
+    if (instr->type == L_StmKind::T_LABEL) {
+      block_instrs.push_back(list<L_stm *>());
+    }
+    block_instrs.back().push_back(instr);
+  }
+  for (auto block_instr : block_instrs) {
+    blocks.push_back(L_Block(block_instr));
+  }
   auto func = new L_func(name, ret, args, blocks);
   return func;
 }
 
-void ast2llvm_moveAlloca(LLVMIR::L_func *f) {}
+void ast2llvm_moveAlloca(LLVMIR::L_func *f) {
+  auto firstBlock = f->blocks.front();
+  for (auto i = f->blocks.begin(); i != f->blocks.end(); i++) {
+    // 确保每个block都以label开头
+    assert((*(*i)->instrs.begin())->type == LLVMIR::L_StmKind::T_LABEL);
+    cout << "label: " << (*i)->label->name << endl;
+    cout << "instrs: " << (*i)->instrs.size() << endl;
+    // 首先跳过第一个block
+    if (i == f->blocks.begin()) {
+      continue;
+    }
+    auto instrs = (*i)->instrs;
+    // 倒着遍历指令，找到alloca指令，将其移动到第一个block的最前面
+    for (auto it = instrs.rbegin(); it != instrs.rend();) {
+      auto instr = *it;
+      if (instr->type == L_StmKind::T_ALLOCA) {
+        firstBlock->instrs.insert(++firstBlock->instrs.begin(), instr);
+        it = reverse_iterator(instrs.erase(std::next(it).base()));
+      } else {
+        ++it;
+      }
+    }
+    // 更新当前block的指令集
+    (*i)->instrs = instrs;
+  }
+}
