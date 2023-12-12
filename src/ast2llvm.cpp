@@ -1208,6 +1208,12 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
         dstOp = AS_Operand_Temp(Temp_newtemp_int());
       }else if(name->type==TempType::STRUCT_TEMP){
         return ptrOp;
+      }else if(name->type == TempType::INT_PTR){
+        return ptrOp;
+      }else if(name->type == TempType::STRUCT_PTR){
+        return ptrOp;
+      }else {
+        assert(0);
       }
       emit_irs.emplace_back(L_Load(dstOp, ptrOp));
       return dstOp;
@@ -1262,9 +1268,10 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e) {
       auto name = lval->u.NAME;
       if (name->type == TempType::INT_PTR) {
         op = AS_Operand_Temp(Temp_newtemp_int_ptr(0));
-        newop = op;
+        newop = AS_Operand_Temp(Temp_newtemp_int());
         auto stm = L_Gep(op, lval, idx);
         emit_irs.push_back(stm);
+        emit_irs.push_back(L_Load(newop, op));
       } else if (name->type == TempType::STRUCT_PTR) {
         op = AS_Operand_Temp(Temp_newtemp_struct_ptr(0, name->structname));
         newop = op;
