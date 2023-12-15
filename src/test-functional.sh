@@ -1,5 +1,5 @@
 #!/bin/bash
-func_testcase_dir=$(realpath $(dirname "$0")/./error)
+func_testcase_dir=$(realpath $(dirname "$0")/./tests)
 test_single() {
 	clang -S -emit-llvm sylib.c -o sylib.ll
 	test_file=`realpath --relative-base=$func_testcase_dir $func_testcase_dir/$1.tea`	

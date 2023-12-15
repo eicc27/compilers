@@ -61,7 +61,10 @@ AS_operand *ast2llvmExprUnit(aA_exprUnit e);
 LLVMIR::L_prog *ast2llvm(aA_program p);
 LLVMIR::L_func *ast2llvmFuncBlock(Func_local *f);
 void ast2llvm_moveAlloca(LLVMIR::L_func *f);
-
+void ast2llvm_renameEmptyLabel(LLVMIR::L_func *f);
+void ast2llvm_removeAfterReturn(LLVMIR::L_func *f);
+std::unordered_map<Temp_label *, int>
+ast2llvm_removeUnusedBlock(LLVMIR::L_func *f);
 int ast2llvmRightVal_first(aA_rightVal r);
 int ast2llvmBoolExpr_first(aA_boolExpr b);
 int ast2llvmBoolBiOpExpr_first(aA_boolBiOpExpr b);

@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <list>
@@ -36,6 +37,19 @@ LLVMIR::L_prog *ast2llvm(aA_program p) {
   cout << "move alloca" << endl;
   for (auto &f : funcs_block) {
     ast2llvm_moveAlloca(f);
+  }
+  for (auto &f : funcs_block) {
+    ast2llvm_renameEmptyLabel(f);
+    ast2llvm_removeAfterReturn(f);
+    //不动点算法，当counter的大小不再发生变化时，停止循环
+    auto prevCounter = ast2llvm_removeUnusedBlock(f);
+    while (true) {
+      auto counter = ast2llvm_removeUnusedBlock(f);
+      if (prevCounter.size() == counter.size()) {
+        break;
+      }
+      prevCounter = counter;
+    }
   }
   return new L_prog(defs, funcs_block);
 }
@@ -1380,7 +1394,8 @@ LLVMIR::L_func *ast2llvmFuncBlock(Func_local *f) {
   // 获取到每一个基本块的指令集；基本块以label开头，以跳转语句或者return结束
   list<list<L_stm *>> block_instrs;
   for (auto instr : instrs) {
-    if (instr->type == L_StmKind::T_LABEL) { // 为label时，向集合末尾添加一个新的空集合
+    if (instr->type ==
+        L_StmKind::T_LABEL) { // 为label时，向集合末尾添加一个新的空集合
       block_instrs.push_back(list<L_stm *>());
     }
     block_instrs.back().push_back(instr); // 插入时，只需考虑最后一个集合
@@ -1399,23 +1414,167 @@ void ast2llvm_moveAlloca(LLVMIR::L_func *f) {
     assert((*(*i)->instrs.begin())->type == LLVMIR::L_StmKind::T_LABEL);
     cout << "label: " << (*i)->label->name << endl;
     cout << "instrs: " << (*i)->instrs.size() << endl;
-    // 首先跳过第一个block
-    if (i == f->blocks.begin()) {
-      continue;
-    }
     auto instrs = (*i)->instrs;
+    auto allocaInstrs = list<L_stm *>(); // 用于存储当前block的alloca指令
     // 倒着遍历指令，找到alloca指令，将其移动到第一个block的最前面
     for (auto it = instrs.rbegin(); it != instrs.rend();) {
       auto instr = *it;
       if (instr->type == L_StmKind::T_ALLOCA) {
-        firstBlock->instrs.insert(++firstBlock->instrs.begin(), instr);
+        // 存储到allocaInstrs中
+        allocaInstrs.push_front(instr);
         // 删除当前block的alloca指令，由于list实现是一个链表，直接使用reverse_iterator跳过当前元素
         it = reverse_iterator(instrs.erase(std::next(it).base()));
       } else {
         ++it;
       }
     }
-    // 更新当前block的指令集
+    // 更新当前block的指令集（删除alloca之后）
     (*i)->instrs = instrs;
+    // 更新firstBlock的指令集（添加alloca）
+    firstBlock->instrs.insert(++firstBlock->instrs.begin(),
+                              allocaInstrs.begin(), allocaInstrs.end());
   }
+}
+
+L_block *FindLabel(L_func *f, Temp_label *label) {
+  for (auto blk : f->blocks) {
+    if (blk->label == label) {
+      return blk;
+    }
+  }
+  return nullptr;
+}
+
+L_block *FindPred(L_func *f, Temp_label *label) {
+  for (auto blk : f->blocks) {
+    if (blk->succs.find(label) != blk->succs.end()) {
+      return blk;
+    }
+  }
+  return nullptr;
+}
+
+// 自上而下遍历所有只含一个jmp的block,将其删除，并更新对应pred block的succs
+// 不删除block本身，而只是重定向其jmp的目标
+void ast2llvm_renameEmptyLabel(LLVMIR::L_func *f) {
+  auto renameJumpLabel = [](L_block *blk, Temp_label *old_label,
+                            Temp_label *new_label) {
+    for (auto i = blk->instrs.begin(); i != blk->instrs.end(); i++) {
+      auto instr = *i;
+      if (instr->type == L_StmKind::T_JUMP &&
+          instr->u.JUMP->jump == old_label) {
+        instr->u.JUMP->jump = new_label;
+        blk->succs.erase(old_label);
+        blk->succs.insert(new_label);
+      } else if (instr->type == L_StmKind::T_CJUMP) {
+        auto u = instr->u.CJUMP;
+        if (u->true_label == old_label) {
+          u->true_label = new_label;
+        }
+        if (u->false_label == old_label) {
+          u->false_label = new_label;
+        }
+        blk->succs.erase(old_label);
+        blk->succs.insert(new_label);
+      }
+    }
+  };
+  auto isSingleJumpBlock = [](L_block *blk) {
+    if (blk->instrs.size() == 2) {
+      auto firstInstr = *(++blk->instrs.begin());
+      if (firstInstr->type == L_StmKind::T_JUMP) {
+        return true;
+      }
+    }
+    return false;
+  };
+  vector<L_block *> emptyBlocks;
+  for (auto blk = f->blocks.begin(); blk != f->blocks.end(); blk++) {
+    if (isSingleJumpBlock(*blk)) {
+      auto oldLabel = (*blk)->label;
+      auto newLabel = (*blk)->instrs.back()->u.JUMP->jump;
+      // 在blk前，找到blk的所有引用
+      for (auto i = f->blocks.begin(); i != blk; i++) {
+        renameJumpLabel(*i, oldLabel, newLabel);
+      }
+    }
+  }
+  // 不需要主动remove,rename之后，相关的跳转块会因0引用而被后面的removeUnusedBlock删除
+  // for (auto emptyBlock : emptyBlocks) {
+  //   f->blocks.remove(emptyBlock);
+  // }
+}
+
+// 删除所有block中return之后的指令，如果后续指令有跳转，
+// 删除对应的succs
+// 不删除之后跳转的block本身
+void ast2llvm_removeAfterReturn(LLVMIR::L_func *f) {
+  for (auto blk : f->blocks) {
+    auto instrs = blk->instrs;
+    vector<L_stm *> instrsAfterReturn = vector<L_stm *>();
+    bool afterReturn = false;
+    for (auto instr : instrs) {
+      if (afterReturn)
+        instrsAfterReturn.push_back(instr);
+      if (instr->type == L_StmKind::T_RETURN)
+        afterReturn = true;
+    }
+    for (auto instr : instrsAfterReturn) {
+      blk->instrs.remove(instr);
+      // 别忘记同时删除instr对应的succs
+      if (instr->type == L_StmKind::T_JUMP) {
+        blk->succs.erase(instr->u.JUMP->jump);
+      } else if (instr->type == L_StmKind::T_CJUMP) {
+        blk->succs.erase(instr->u.CJUMP->true_label);
+        blk->succs.erase(instr->u.CJUMP->false_label);
+      }
+    }
+  }
+}
+
+// 使用不动点算法：refCounter大小不再改变时，算法结束
+// 原理：该算法如果有删除block,会导致下一次运行该算法refCounter大小发生变化
+// 反复删除没有被引用的block，直到refCounter大小不再改变，因为
+// 如果没有被引用的block单独又引用了其他block，那么refCounter大小会发生变化
+// 不需要更新对应的succs，前面已经针对succs进行了更新
+std::unordered_map<Temp_label *, int> ast2llvm_removeUnusedBlock(LLVMIR::L_func *f) {
+  // 维护一个引用计数器，记录每个block的引用次数
+  auto refCounter = std::unordered_map<Temp_label *, int>();
+  for (auto blk : f->blocks) {
+    if (blk == f->blocks.front()) {
+      refCounter.emplace(blk->label, 1);
+      continue;
+    }
+    refCounter.emplace(blk->label, 0);
+  }
+  for (auto blk : f->blocks) {
+    auto instrs = blk->instrs;
+    for (auto instr : instrs) {
+      // 如果命令是jump或者cjump,则将其跳转的label的引用计数加1
+      if (instr->type == L_StmKind::T_JUMP) {
+        auto target = instr->u.JUMP->jump;
+        refCounter[target]++;
+      } else if (instr->type == L_StmKind::T_CJUMP) {
+        auto true_label = instr->u.CJUMP->true_label;
+        auto false_label = instr->u.CJUMP->false_label;
+        refCounter[true_label]++;
+        refCounter[false_label]++;
+      }
+    }
+  }
+  // 一旦发现引用计数器中有为0的label，则需要递归删除该label对应的block
+  for (auto it = refCounter.begin(); it != refCounter.end(); ++it) {
+    auto label = it->first;
+    auto count = it->second;
+    if (count == 0) {
+      auto unusedBlock = FindLabel(f, label);
+      cout << "Found unused block: " << unusedBlock->label->name << endl;
+      if (unusedBlock == nullptr) {
+        cout << "No block for label: " << label->name << endl;
+        continue;
+      }
+      f->blocks.remove(unusedBlock);
+    }
+  }
+  return refCounter;
 }

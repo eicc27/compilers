@@ -1,0 +1,20 @@
+fn main() -> int {
+    let x: int = 0;
+    let y: int = 0;
+    let z: int = x + y;
+    if (z > 0) {
+        y = y + 1;
+        ret z;
+        if (z > 0) {
+            y = y + 1;
+            if (x > 0) {
+                y = y + 1;
+            } else {
+                y = y + 1;
+            }
+        } 
+    }
+    y = y + 1;
+    z = x + y;
+    ret z;
+}
